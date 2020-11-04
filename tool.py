@@ -57,7 +57,7 @@ def run(context):
 
     VUMC_ROIs_file_handle = context.get_files(
         'input', reg_expression='.*VUMC_ROIs.nii.gz')[0]
-    VUMC_ROIs_file_path = inject_file_handle.download('/root/')
+    VUMC_ROIs_file_path = VUMC_ROIs_file_handle.download('/root/')
 
     ###############################
     # _____ _____ _______     __  #
@@ -71,7 +71,7 @@ def run(context):
     ###############################
     #       IronTract Team        #
     #      TrackyMcTrackface      #
-    ################################
+    ###############################
 
     #################
     # Load the data #
@@ -80,7 +80,6 @@ def run(context):
     bvals, bvecs = read_bvals_bvecs(hcpl_bvalues_file_path,
                                     hcpl_bvecs_file_path)
     gtab = gradient_table(bvals, bvecs)
-    ROIs_img = nib.load(VUMC_ROIs_file_path)
 
     ############################################
     # Extract the brain mask from the b0 image #
@@ -102,8 +101,8 @@ def run(context):
     # Compute Fiber Orientation Distribution (CSD) #
     ################################################
     context.set_progress(message='Processing voxel-wise FOD estimation.')
-    response, ratio = auto_response_ssst(
-        gtab, dwi_img.get_data(), roi_radii=10, fa_thr=0.7)
+    response, _ = auto_response_ssst(gtab, dwi_img.get_data(),
+                                     roi_radii=10, fa_thr=0.7)
     csd_model = ConstrainedSphericalDeconvModel(gtab, response, sh_order=6)
     csd_fit = csd_model.fit(dwi_img.get_data(), mask=brain_mask)
     # fod_file_path = "/root/fod.nii.gz"
@@ -117,6 +116,7 @@ def run(context):
     seed_mask_img = nib.load(inject_file_path)
     affine = seed_mask_img.affine
     seeds = utils.seeds_from_mask(seed_mask_img.get_data(), affine, density=5)
+
     stopping_criterion = ThresholdStoppingCriterion(FA, 0.2)
     prob_dg = ProbabilisticDirectionGetter.from_shcoeff(csd_fit.shm_coeff,
                                                         max_angle=20.,
@@ -162,6 +162,7 @@ def run(context):
 
     if postprocessing in ["VUMC", "ALL"]:
         context.set_progress(message='Processing density map (VUMC)')
+        ROIs_img = nib.load(VUMC_ROIs_file_path)
         volume_folder = "/root/vol_vumc"
         output_vumc_zip_file_path = "/root/TrackyMcTrackface_VUMC_example.zip"
         os.mkdir(volume_folder)
