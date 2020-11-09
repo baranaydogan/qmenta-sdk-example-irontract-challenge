@@ -18,6 +18,7 @@ def run(context):
     ####################################################
     # Get the path to input files  and other parameter #
     ####################################################
+    context.set_progress(message='Retrieving data.')
     analysis_data = context.fetch_analysis_data()
     settings = analysis_data['settings']
     postprocessing = settings['postprocessing']
@@ -45,7 +46,7 @@ def run(context):
     #############################
     # Fitting NODDI using AMICO #
     #############################
-
+    context.set_progress(message='Setting up AMICO.')
     amico.core.setup()
 
     ae = amico.Evaluation('/root/', '.')
@@ -66,7 +67,7 @@ def run(context):
     ae.set_model('NODDI')
     ae.generate_kernels()
     ae.load_kernels()
-
+    context.set_progress(message='Fitting NODDI maps.')
     ae.fit()
 
     ae.save_results()
@@ -74,7 +75,7 @@ def run(context):
     ######################################################
     # Computing inclusion/exclusion maps from NODDI maps #
     ######################################################
-
+    context.set_progress(message='Defining masks.')
     os.system('/root/mrtrix3/bin/mrcalc /root/AMICO/NODDI/FIT_OD.nii.gz 0.1 -gt ' +
               '/root/AMICO/NODDI/FIT_OD.nii.gz 0.7 -lt -mul /root/wm_mask.nii.gz')
 
@@ -85,7 +86,7 @@ def run(context):
     ##################################################
     # Doing reconstruction&tracking using TRAMPOLINO #
     ##################################################
-
+    context.set_progress(message='Starting TRAMPOLINO recon&track.')
     os.chdir('/root')
     os.system('trampolino -r results -n mrtrix_workflow recon -i ' + hcpl_dwi_file_path + ' ' +
               '-v ' + hcpl_bvecs_file_path + ' -b ' + hcpl_bvalues_file_path + ' ' +
@@ -110,7 +111,7 @@ def run(context):
     ###########################################################################
 
     if postprocessing in ['EPFL', 'ALL']:
-        context.set_progress(message='Processing density map (EPFL)')
+        context.set_progress(message='Processing density map (EPFL).')
         volume_folder = '/root/vol_epfl'
         output_epfl_zip_file_path = '/root/SpaghettiBeans_EPFL.zip'
         os.mkdir(volume_folder)
@@ -132,7 +133,7 @@ def run(context):
         shutil.make_archive(output_epfl_zip_file_path[:-4], 'zip', volume_folder)
 
     if postprocessing in ['VUMC', 'ALL']:
-        context.set_progress(message='Processing density map (VUMC)')
+        context.set_progress(message='Processing density map (VUMC).')
         ROIs_img = nib.load(VUMC_ROIs_file_path)
         volume_folder = '/root/vol_vumc'
         output_vumc_zip_file_path = '/root/SpaghettiBeans_VUMC.zip'
