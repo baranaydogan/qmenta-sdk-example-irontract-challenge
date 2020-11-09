@@ -13,10 +13,13 @@ RUN pip3 install qmenta-sdk-lib
 RUN python3 -m qmenta.sdk.make_entrypoint /root/entrypoint.sh /root/
 
 # Install your software requirements and run other config commands (may take several minutes)
+ENV TZ=Europe/London
+RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
 RUN apt-get update -y && \
-    apt-get install -y mrtrix libfreetype6-dev libxft-dev wkhtmltopdf xvfb && \
-    rm -rf /var/lib/apt/lists/* && \
-    pip3 install matplotlib numpy pdfkit tornado
+    apt-get install -y git g++ ants python libblas-dev liblapack-dev libeigen3-dev zlib1g-dev libqt5opengl5-dev libqt5svg5-dev libgl1-mesa-dev libfftw3-dev libtiff5-dev libpng-dev && \
+    git clone https://github.com/MRtrix3/mrtrix3.git && cd mrtrix3 && ./configure -nogui && ./build && ./set_path && \
+    pip3 install numpy dipy scipy nipype dmri-amico trampolino && \
+    rm -rf /var/lib/apt/lists/*
 
 # A virtual x framebuffer is required to generate PDF files with pdfkit
 RUN echo '#!/bin/bash\nxvfb-run -a --server-args="-screen 0, 1024x768x24" /usr/bin/wkhtmltopdf -q $*' > /usr/bin/wkhtmltopdf.sh && \
