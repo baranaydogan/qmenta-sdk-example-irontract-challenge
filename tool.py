@@ -1,23 +1,15 @@
+import os
+import amico
 import nibabel as nib
 import numpy as np
-import os
-import scipy.ndimage.morphology
-import shutil
-
-from dipy.core.gradients import gradient_table
-from dipy.data import get_sphere
-from dipy.direction import ProbabilisticDirectionGetter
 from dipy.io.gradients import read_bvals_bvecs
-from dipy.io.stateful_tractogram import Space, StatefulTractogram
-from dipy.io.streamline import save_trk
-from dipy.reconst.csdeconv import (ConstrainedSphericalDeconvModel,
-                                   auto_response_ssst)
-from dipy.reconst.dti import TensorModel, fractional_anisotropy
-from dipy.segment.mask import median_otsu
+from dipy.core.geometry import normalized_vector
+from dipy.io.streamline import load_tractogram
+
+import shutil
+import scipy.ndimage.morphology
+from dipy.io.gradients import read_bvals_bvecs
 from dipy.tracking import utils
-from dipy.tracking.local_tracking import LocalTracking
-from dipy.tracking.streamline import Streamlines
-from dipy.tracking.stopping_criterion import ThresholdStoppingCriterion
 from dipy.tracking.streamlinespeed import length
 
 
@@ -41,92 +33,65 @@ def run(context):
         'input', reg_expression='.*prep.gradients.hcpl.txt')[0]
     hcpl_bvecs_file_path = hcpl_bvecs_file_handle.download('/root/')
 
-    dwi_file_handle = context.get_files('input', modality='DSI')[0]
-    dwi_file_path = dwi_file_handle.download('/root/')
-    bvalues_file_handle = context.get_files(
-        'input', reg_expression='.*prep.bvalues.txt')[0]
-    bvalues_file_path = bvalues_file_handle.download('/root/')
-    bvecs_file_handle = context.get_files(
-        'input', reg_expression='.*prep.gradients.txt')[0]
-    bvecs_file_path = bvecs_file_handle.download('/root/')
-
     inject_file_handle = context.get_files(
         'input', reg_expression='.*prep.inject.nii.gz')[0]
     inject_file_path = inject_file_handle.download('/root/')
-
+    seed_mask_img = nib.load(inject_file_path)
+    affine = seed_mask_img.affine
 
     VUMC_ROIs_file_handle = context.get_files(
         'input', reg_expression='.*VUMC_ROIs.nii.gz')[0]
     VUMC_ROIs_file_path = VUMC_ROIs_file_handle.download('/root/')
 
-    ###############################
-    # _____ _____ _______     __  #
-    # |  __ \_   _|  __ \ \   / / #
-    # | |  | || | | |__) \ \_/ /  #
-    # | |  | || | |  ___/ \   /   #
-    # | |__| || |_| |      | |    #
-    # |_____/_____|_|      |_|    #
-    #                             #
-    # dipy.org/documentation      #
-    ###############################
-    #       IronTract Team        #
-    #      TrackyMcTrackface      #
-    ###############################
+    #############################
+    # Fitting NODDI using AMICO #
+    #############################
+    amico.core.setup()
 
-    #################
-    # Load the data #
-    #################
-    dwi_img = nib.load(hcpl_dwi_file_path)
-    bvals, bvecs = read_bvals_bvecs(hcpl_bvalues_file_path,
-                                    hcpl_bvecs_file_path)
-    gtab = gradient_table(bvals, bvecs)
+    ae = amico.Evaluation("/root/", ".")
 
-    ############################################
-    # Extract the brain mask from the b0 image #
-    ############################################
-    _, brain_mask = median_otsu(dwi_img.get_data()[:, :, :, 0],
-                                median_radius=2, numpass=1)
+    [_, bvecs] = read_bvals_bvecs(None, hcpl_bvalues_file_path)
+    bvecs_norm = normalized_vector(hcpl_bvecs_file_path)
+    bvecs_norm[0] = [0, 0, 0]
+    np.savetxt('/root/grad_norm.txt', np.matrix.transpose(bvecs_norm), fmt='%.3f')
 
-    ##################################################################
-    # Fit the tensor model and compute the fractional anisotropy map #
-    ##################################################################
-    context.set_progress(message='Processing voxel-wise DTI metrics.')
-    tenmodel = TensorModel(gtab)
-    tenfit = tenmodel.fit(dwi_img.get_data(), mask=brain_mask)
-    FA = fractional_anisotropy(tenfit.evals)
-    # fa_file_path = "/root/fa.nii.gz"
-    # nib.Nifti1Image(FA,dwi_img.affine).to_filename(fa_file_path)
+    amico.util.fsl2scheme(hcpl_bvalues_file_path, '/root/grad_norm.txt')
 
-    ################################################
-    # Compute Fiber Orientation Distribution (CSD) #
-    ################################################
-    context.set_progress(message='Processing voxel-wise FOD estimation.')
-    response, _ = auto_response_ssst(gtab, dwi_img.get_data(),
-                                     roi_radii=10, fa_thr=0.7)
-    csd_model = ConstrainedSphericalDeconvModel(gtab, response, sh_order=6)
-    csd_fit = csd_model.fit(dwi_img.get_data(), mask=brain_mask)
-    # fod_file_path = "/root/fod.nii.gz"
-    # nib.Nifti1Image(csd_fit.shm_coeff,dwi_img.affine).to_filename(fod_file_path)
+    ae.load_data(dwi_filename="prep.dwi.hcpl.nii.gz",
+                 scheme_filename="bval.scheme", mask_filename="mask.nii.gz", b0_thr=30)
 
-    ###########################################
-    # Compute DIPY Probabilistic Tractography #
-    ###########################################
-    context.set_progress(message='Processing tractography.')
-    sphere = get_sphere("repulsion724")
-    seed_mask_img = nib.load(inject_file_path)
-    affine = seed_mask_img.affine
-    seeds = utils.seeds_from_mask(seed_mask_img.get_data(), affine, density=5)
+    ae.set_model("NODDI")
+    ae.generate_kernels(regenerate=True)
+    ae.load_kernels()
 
-    stopping_criterion = ThresholdStoppingCriterion(FA, 0.2)
-    prob_dg = ProbabilisticDirectionGetter.from_shcoeff(csd_fit.shm_coeff,
-                                                        max_angle=20.,
-                                                        sphere=sphere)
-    streamline_generator = LocalTracking(prob_dg, stopping_criterion, seeds,
-                                         affine, step_size=.2, max_cross=1)
-    streamlines = Streamlines(streamline_generator)
-    # sft = StatefulTractogram(streamlines, seed_mask_img, Space.RASMM)
-    # streamlines_file_path = "/root/streamlines.trk"
-    # save_trk(sft, streamlines_file_path)
+    ae.fit()
+
+    ae.save_results()
+
+    ######################################################
+    # Computing inclusion/exclusion maps from NODDI maps #
+    ######################################################
+
+    os.system('mrcalc /root/AMICO/NODDI/FIT_OD.nii.gz 0.1 -gt ' +
+              '/root/AMICO/NODDI/FIT_OD.nii.gz 0.7 -lt -mul /root/wm_mask.nii.gz')
+
+    os.system('mrcalc /root/AMICO/NODDI/FIT_ICVF.nii.gz 0.95 -lt /root/gm_mask.nii.gz')
+
+    os.system('mrcalc /root/AMICO/NODDI/FIT_ISOVF.nii.gz 0 -gt /root/csf_mask.nii.gz')
+
+    ##################################################
+    # Doing reconstruction&tracking using TRAMPOLINO #
+    ##################################################
+    os.chdir('/root')
+    os.system('trampolino -r results -n mrtrix_workflow recon -i prep.dwi.hcpl.nii.gz ' +
+              '-v prep.gradients.hcpl.txt -b prep.bvalues.hcpl.txt ' +
+              '--opt bthres:0,mask:wm_mask.nii.gz mrtrix_msmt_csd track' +
+              '-s prep.inject.nii.gz --opt nos:10000,include:gm_mask.nii.gz,exclude:csf_mask.nii.gz ' +
+              '--min_length 10,50 --ensemble min_length mrtrix_tckgen ' +
+              'convert -r wm_mask.nii.gz tck2trk')
+
+    track = load_tractogram('results/track.trk', 'wm_mask.nii.gz')
+    streamlines = track.streamlines
 
     ###########################################################################
     # Compute 3D volumes for the IronTract Challenge. For 'EPFL', we only     #
@@ -195,12 +160,9 @@ def run(context):
     # Upload the data #
     ###################
     context.set_progress(message='Uploading results...')
-    # context.upload_file(fa_file_path, 'fa.nii.gz')
-    # context.upload_file(fod_file_path, 'fod.nii.gz')
-    # context.upload_file(streamlines_file_path, 'streamlines.trk')
     if postprocessing in ["EPFL", "ALL"]:
         context.upload_file(output_epfl_zip_file_path,
-                            'TrackyMcTrackface_EPFL_example.zip')
+                            'SpaghettiBeans_EPFL.zip')
     if postprocessing in ["VUMC", "ALL"]:
         context.upload_file(output_vumc_zip_file_path,
-                            'TrackyMcTrackface_VUMC_example.zip')
+                            'SpaghettiBeans_VUMC.zip')
