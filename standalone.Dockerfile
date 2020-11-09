@@ -14,6 +14,8 @@ RUN python3 -m qmenta.sdk.make_entrypoint /root/entrypoint.sh /root/
 
 # Install your software requirements and run other config commands (may take several minutes)
 ENV TZ=Europe/London
+ENV LC_ALL C.UTF-8
+ENV LANG C.UTF-8
 RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
 RUN apt-get update -y && \
     apt-get install -y git g++ ants python libblas-dev liblapack-dev libeigen3-dev zlib1g-dev libqt5opengl5-dev libqt5svg5-dev libgl1-mesa-dev libfftw3-dev libtiff5-dev libpng-dev && \
