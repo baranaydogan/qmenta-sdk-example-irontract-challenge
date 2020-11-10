@@ -18,8 +18,10 @@ ENV LC_ALL C.UTF-8
 ENV LANG C.UTF-8
 RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
 RUN apt-get update -y && \
-    apt-get install -y git g++ ants python libblas-dev liblapack-dev libeigen3-dev zlib1g-dev libqt5opengl5-dev libqt5svg5-dev libgl1-mesa-dev libfftw3-dev libtiff5-dev libpng-dev && \
-    git clone https://github.com/MRtrix3/mrtrix3.git && cd mrtrix3 && ./configure -nogui && ./build && ./set_path && \
+    apt-get install -y g++ ants python libblas-dev liblapack-dev libeigen3-dev zlib1g-dev libqt5opengl5-dev \
+    libqt5svg5-dev libgl1-mesa-dev libfftw3-dev libtiff5-dev libpng-dev graphviz && \
+    wget https://github.com/MRtrix3/mrtrix3/archive/3.0_RC3_latest.tar.gz && tar xvzf 3.0_RC3_latest.tar.gz && \
+    cd mrtrix3-3.0_RC3_latest && ./configure -nogui && ./build && ./set_path && \
     pip3 install numpy dipy scipy nipype dmri-amico trampolino && \
     rm -rf /var/lib/apt/lists/*
 
