@@ -90,7 +90,7 @@ def run(context):
     os.chdir('/root')
     os.system('trampolino -r results -n mrtrix_workflow recon -i ' + hcpl_dwi_file_path + ' ' +
               '-v ' + hcpl_bvecs_file_path + ' -b ' + hcpl_bvalues_file_path + ' ' +
-              '--opt bthres:0,mask:wm_mask.nii.gz mrtrix_msmt_csd track' +
+              '--opt bthres:0,mask:wm_mask.nii.gz mrtrix_msmt_csd track ' +
               '-s ' + inject_file_path +
               ' --opt nos:10000,include:gm_mask.nii.gz,exclude:csf_mask.nii.gz ' +
               '--min_length 10,50 --ensemble min_length mrtrix_tckgen ' +
