@@ -58,7 +58,7 @@ def run(context):
 
     amico.util.fsl2scheme(hcpl_bvalues_file_path, '/root/grad_norm.txt', '/root/grad.scheme')
 
-    os.system('/root/mrtrix3/bin/dwi2mask -fslgrad ' + hcpl_bvecs_file_path + ' ' +
+    os.system('/root/mrtrix3-3.0_RC3_latest/bin/dwi2mask -fslgrad ' + hcpl_bvecs_file_path + ' ' +
               hcpl_bvalues_file_path+' '+hcpl_dwi_file_path+' /root/mask.nii.gz')
 
     ae.load_data(dwi_filename='prep.dwi.hcpl.nii.gz',
@@ -76,12 +76,12 @@ def run(context):
     # Computing inclusion/exclusion maps from NODDI maps #
     ######################################################
     context.set_progress(message='Defining masks.')
-    os.system('/root/mrtrix3/bin/mrcalc /root/AMICO/NODDI/FIT_OD.nii.gz 0.1 -gt ' +
+    os.system('/root/mrtrix3-3.0_RC3_latest/bin/mrcalc /root/AMICO/NODDI/FIT_OD.nii.gz 0.1 -gt ' +
               '/root/AMICO/NODDI/FIT_OD.nii.gz 0.7 -lt -mul /root/wm_mask.nii.gz')
 
-    os.system('/root/mrtrix3/bin/mrcalc /root/AMICO/NODDI/FIT_ICVF.nii.gz 0.95 -lt /root/gm_mask.nii.gz')
+    os.system('/root/mrtrix3-3.0_RC3_latest/bin/mrcalc /root/AMICO/NODDI/FIT_ICVF.nii.gz 0.95 -lt /root/gm_mask.nii.gz')
 
-    os.system('/root/mrtrix3/bin/mrcalc /root/AMICO/NODDI/FIT_ISOVF.nii.gz 0 -gt /root/csf_mask.nii.gz')
+    os.system('/root/mrtrix3-3.0_RC3_latest/bin/mrcalc /root/AMICO/NODDI/FIT_ISOVF.nii.gz 0 -gt /root/csf_mask.nii.gz')
 
     ##################################################
     # Doing reconstruction&tracking using TRAMPOLINO #
