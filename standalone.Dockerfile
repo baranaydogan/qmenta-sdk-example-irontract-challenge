@@ -21,7 +21,7 @@ RUN apt-get update -y && \
     apt-get install -y git g++ python libblas-dev liblapack-dev libeigen3-dev zlib1g-dev libqt5opengl5-dev \
     libqt5svg5-dev libgl1-mesa-dev libfftw3-dev libtiff5-dev libpng-dev graphviz cmake && \
     wget https://github.com/MRtrix3/mrtrix3/archive/3.0_RC3_latest.tar.gz && tar xvzf 3.0_RC3_latest.tar.gz && \
-    cd mrtrix3-3.0_RC3_latest && ./configure -nogui && ./build && ./set_path && \
+    cd mrtrix3-3.0_RC3_latest && ./configure -nogui && ./build && ./set_path && cd .. && \
     wget https://github.com/ANTsX/ANTs/archive/v2.3.1.tar.gz && tar xvzf v2.3.1.tar.gz && \
     mkdir antsbin && cd antsbin && cmake ../ANTs-2.3.1 && make -j 4 && cd .. && \
     echo 'export PATH=~/antsbin/bin:$PATH' >> ~/.bashrc && source .bashrc && \
