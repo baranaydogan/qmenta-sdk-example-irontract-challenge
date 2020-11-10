@@ -19,7 +19,7 @@ ENV LANG C.UTF-8
 RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
 RUN apt-get update -y && \
     apt-get install -y g++ python libblas-dev liblapack-dev libeigen3-dev zlib1g-dev libqt5opengl5-dev \
-    libqt5svg5-dev libgl1-mesa-dev libfftw3-dev libtiff5-dev libpng-dev graphviz && \
+    libqt5svg5-dev libgl1-mesa-dev libfftw3-dev libtiff5-dev libpng-dev graphviz cmake && \
     wget https://github.com/MRtrix3/mrtrix3/archive/3.0_RC3_latest.tar.gz && tar xvzf 3.0_RC3_latest.tar.gz && \
     cd mrtrix3-3.0_RC3_latest && ./configure -nogui && ./build && ./set_path && \
     wget https://github.com/ANTsX/ANTs/archive/v2.3.1.tar.gz && tar xvzf v2.3.1.tar.gz && \
