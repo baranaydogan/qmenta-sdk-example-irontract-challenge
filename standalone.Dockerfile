@@ -24,7 +24,7 @@ RUN apt-get update -y && \
     cd mrtrix3-3.0_RC3_latest && ./configure -nogui && ./build && ./set_path && \
     wget https://github.com/ANTsX/ANTs/archive/v2.3.1.tar.gz && tar xvzf v2.3.1.tar.gz && \
     mkdir antsbin && cd antsbin && cmake ../ANTs-2.3.1 && make -j 4 && cd .. && \
-    echo 'export PATH=~/antsbin:$PATH' >> ~/.bashrc && source .bashrc && \
+    echo 'export PATH=~/antsbin/bin:$PATH' >> ~/.bashrc && source .bashrc && \
     pip3 install numpy dipy scipy nipype dmri-amico trampolino && \
     rm -rf /var/lib/apt/lists/*
 
